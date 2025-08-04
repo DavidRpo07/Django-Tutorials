@@ -1,9 +1,10 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, ListView
 from django.views import View
 from django import forms
+from .models import Product
 # Create your views here.
 
 class HomePageView(TemplateView):
@@ -25,40 +26,38 @@ class AboutPageView(TemplateView):
 class ContactPageView(TemplateView):
     template_name = "pages/contact.html"
 
-class Product:
- products = [
-    {"id":"1", "name":"TV", "description":"Best TV", "price": 499.99},
-    {"id":"2", "name":"iPhone", "description":"Best iPhone", "price": 999.99},
-    {"id":"3", "name":"Chromecast", "description":"Best Chromecast", "price": 49.99},
-    {"id":"4", "name":"Glasses", "description":"Best Glasses", "price": 19.99},
-    ]
 class ProductIndexView(View):
     template_name = 'pages/products/index.html'
     def get(self, request):
         viewData = {}
         viewData["title"] = "Products - Online Store"
         viewData["subtitle"] = "List of products"
-        viewData["products"] = Product.products
+        viewData["products"] = Product.objects.all()
         return render(request, self.template_name, viewData)
 
 class ProductShowView(View):
     template_name = 'pages/products/show.html'
 
     def get(self, request, id):
-        viewData = {}
+    # Check if product id is valid
         try:
-            product = Product.products[int(id)-1]
-        except (IndexError, ValueError):
+            product_id = int(id)
+            if product_id < 1:
+                raise ValueError("Product id must be 1 or greater")
+            product = get_object_or_404(Product, pk=product_id)
+        except (ValueError, IndexError):
+        # If the product id is not valid, redirect to the home page
             return HttpResponseRedirect(reverse('home'))
-        
-        viewData["title"] = product["name"] + " - Online Store"
-        viewData["subtitle"] = product["name"] + " - Product information"
+
+        viewData = {}
+        product = get_object_or_404(Product, pk=product_id)
+        viewData["title"] = product.name + " - Online Store"
+        viewData["subtitle"] = product.name + " - Product information"
         viewData["product"] = product
         return render(request, self.template_name, viewData)
 
 class ProductForm(forms.Form):
-    name = forms.CharField(required=True)
-    price = forms.FloatField(required=True)
+
 
     def clean_price(self):
         price = self.cleaned_data.get('price')
